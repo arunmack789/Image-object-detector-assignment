@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  ai-backend:
+    build:
+      context: ./ai_backend
+      dockerfile: Dockerfile_ai
+    container_name: ai-backend
+    ports:
+      - "8000:8000"
+
+  ui-backend:
+    build:
+      context: ./ui_backend
+      dockerfile: Dockerfile_ui
+    container_name: ui-backend
+    ports:
+      - "8001:8001"
+    environment:
+      - AI_BACKEND_URL=http://ai-backend:8000
+      - AI_BACKEND_PUBLIC_URL=http://127.0.0.1:8000 # Add this line
+    depends_on:
+      - ai-backend
