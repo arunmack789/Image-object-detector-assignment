@@ -1,0 +1,43 @@
+# ========================
+#  Stage 1: Builder image
+# ========================
+FROM python:3.9-slim AS builder
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- Install PyTorch (CPU only) + torchvision (CPU) ----
+RUN pip install --no-cache-dir --prefix=/install \
+    torch==2.2.2 torchvision==0.17.2 \
+    --index-url https://download.pytorch.org/whl/test/cpu
+
+# ---- Install ultralytics (without re-pulling torch) ----
+RUN pip install --no-cache-dir --prefix=/install ultralytics --no-deps
+
+# ---- Install other lightweight deps ----
+RUN pip install --no-cache-dir --prefix=/install \
+    fastapi uvicorn[standard] pillow python-multipart "numpy<2" \
+    opencv-python-headless tqdm psutil pyyaml requests pandas
+
+# ========================
+#  Stage 2: Runtime image
+# ========================
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy runtime libs only
+COPY --from=builder /install /usr/local
+
+# Copy your app code + model
+COPY test.py yolo11n.pt /app/
+
+EXPOSE 8000
+
+CMD ["uvicorn", "test:app", "--host", "0.0.0.0", "--port", "8000"]
